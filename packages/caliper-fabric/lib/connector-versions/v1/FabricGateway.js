@@ -1,35 +1,44 @@
 /*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-'use strict';
-const semver = require('semver');
-const { DefaultEventHandlerStrategies, DefaultQueryHandlerStrategies, Gateway } = require('fabric-network');
-const { ConnectorBase, CaliperUtils, TxStatus, ConfigUtil } = require('@hyperledger/caliper-core');
-const FabricConnectorContext = require('../../FabricConnectorContext');
+"use strict";
+const semver = require("semver");
+const {
+    DefaultEventHandlerStrategies,
+    DefaultQueryHandlerStrategies,
+    Gateway,
+} = require("fabric-network");
+const {
+    ConnectorBase,
+    CaliperUtils,
+    TxStatus,
+    ConfigUtil,
+} = require("@hyperledger/caliper-core");
+const FabricConnectorContext = require("../../FabricConnectorContext");
 
-const logger = CaliperUtils.getLogger('connectors/v1/FabricGateway');
+const logger = CaliperUtils.getLogger("connectors/v1/FabricGateway");
 
 const EventStrategies = {
-    msp_all : DefaultEventHandlerStrategies.MSPID_SCOPE_ALLFORTX,
-    msp_any : DefaultEventHandlerStrategies.MSPID_SCOPE_ANYFORTX,
-    network_all : DefaultEventHandlerStrategies.NETWORK_SCOPE_ALLFORTX,
-    network_any : DefaultEventHandlerStrategies.NETWORK_SCOPE_ANYFORTX,
+    msp_all: DefaultEventHandlerStrategies.MSPID_SCOPE_ALLFORTX,
+    msp_any: DefaultEventHandlerStrategies.MSPID_SCOPE_ANYFORTX,
+    network_all: DefaultEventHandlerStrategies.NETWORK_SCOPE_ALLFORTX,
+    network_any: DefaultEventHandlerStrategies.NETWORK_SCOPE_ANYFORTX,
 };
 
 const QueryStrategies = {
-    msp_single : DefaultQueryHandlerStrategies.MSPID_SCOPE_SINGLE,
-    msp_round_robin : DefaultQueryHandlerStrategies.MSPID_SCOPE_ROUND_ROBIN,
+    msp_single: DefaultQueryHandlerStrategies.MSPID_SCOPE_SINGLE,
+    msp_round_robin: DefaultQueryHandlerStrategies.MSPID_SCOPE_ROUND_ROBIN,
 };
 
 //////////////////////
@@ -79,7 +88,7 @@ class V1FabricGateway extends ConnectorBase {
         super(workerIndex, bcType);
         this.connectorConfiguration = connectorConfiguration;
 
-        this.fabricNetworkVersion = require('fabric-network/package').version;
+        this.fabricNetworkVersion = require("fabric-network/package").version;
 
         this.contractInstancesByIdentity = new Map();
         this.gatewayInstanceByIdentity = new Map();
@@ -87,12 +96,24 @@ class V1FabricGateway extends ConnectorBase {
         this.context = undefined;
 
         // this value is hardcoded, if it's used, that means that the provided timeouts are not sufficient
-        this.configDefaultTimeout = ConfigUtil.get(ConfigUtil.keys.Fabric.Timeout.InvokeOrQuery, 60);
+        this.configDefaultTimeout = ConfigUtil.get(
+            ConfigUtil.keys.Fabric.Timeout.InvokeOrQuery,
+            60
+        );
 
         // Gateway connector
-        this.configLocalHost = ConfigUtil.get(ConfigUtil.keys.Fabric.Gateway.LocalHost, true);
-        this.configEventStrategy = ConfigUtil.get(ConfigUtil.keys.Fabric.Gateway.EventStrategy, 'msp_all');
-        this.configQueryStrategy = ConfigUtil.get(ConfigUtil.keys.Fabric.Gateway.QueryStrategy, 'msp_single');
+        this.configLocalHost = ConfigUtil.get(
+            ConfigUtil.keys.Fabric.Gateway.LocalHost,
+            true
+        );
+        this.configEventStrategy = ConfigUtil.get(
+            ConfigUtil.keys.Fabric.Gateway.EventStrategy,
+            "msp_all"
+        );
+        this.configQueryStrategy = ConfigUtil.get(
+            ConfigUtil.keys.Fabric.Gateway.QueryStrategy,
+            "msp_single"
+        );
     }
 
     //////////////////////////
@@ -112,10 +133,17 @@ class V1FabricGateway extends ConnectorBase {
             this.context = new FabricConnectorContext(this.workerIndex);
             await this._prepareGatewayAndContractMapsForEachIdentity();
 
-            if (semver.satisfies(semver.coerce(this.fabricNetworkVersion), '>=1.4.5')) {
+            if (
+                semver.satisfies(
+                    semver.coerce(this.fabricNetworkVersion),
+                    ">=1.4.5"
+                )
+            ) {
                 await this._buildPeerCache();
             } else {
-                logger.warn(`Bound SDK ${this.fabricNetworkVersion} is unable to use target peers; to enable target peer nomination for a gateway transaction, bind Caliper to Fabric 1.4.5 and above`);
+                logger.warn(
+                    `Bound SDK ${this.fabricNetworkVersion} is unable to use target peers; to enable target peer nomination for a gateway transaction, bind Caliper to Fabric 1.4.5 and above`
+                );
             }
         }
 
@@ -127,10 +155,20 @@ class V1FabricGateway extends ConnectorBase {
      * @async
      */
     async init() {
-        const defaultOrganization = this.connectorConfiguration.getOrganizations()[0];
-        const tlsInfo = this.connectorConfiguration.isMutualTLS() ? 'mutual'
-            : ((await this.connectorConfiguration.getConnectionProfileDefinitionForOrganization(defaultOrganization)).isTLSEnabled() ? 'server' : 'none');
-        logger.info(`Fabric SDK version: ${this.fabricNetworkVersion.toString()}; TLS based on ${defaultOrganization}: ${tlsInfo}`);
+        const defaultOrganization =
+            this.connectorConfiguration.getOrganizations()[0];
+        const tlsInfo = this.connectorConfiguration.isMutualTLS()
+            ? "mutual"
+            : (
+                  await this.connectorConfiguration.getConnectionProfileDefinitionForOrganization(
+                      defaultOrganization
+                  )
+              ).isTLSEnabled()
+            ? "server"
+            : "none";
+        logger.info(
+            `Fabric SDK version: ${this.fabricNetworkVersion.toString()}; TLS based on ${defaultOrganization}: ${tlsInfo}`
+        );
     }
 
     /**
@@ -138,7 +176,9 @@ class V1FabricGateway extends ConnectorBase {
      * @async
      */
     async installSmartContract() {
-        logger.warn(`Install smart contract not available with Fabric SDK version: ${this.fabricNetworkVersion.toString()}`);
+        logger.warn(
+            `Install smart contract not available with Fabric SDK version: ${this.fabricNetworkVersion.toString()}`
+        );
     }
 
     /**
@@ -147,27 +187,35 @@ class V1FabricGateway extends ConnectorBase {
      */
     async _sendSingleRequest(request) {
         if (!request.contractId) {
-            throw new Error('No contractId provided in the request');
+            throw new Error("No contractId provided in the request");
         }
 
         if (!request.channel) {
-            const contractDetails = this.connectorConfiguration.getContractDetailsForContractId(request.contractId);
+            const contractDetails =
+                this.connectorConfiguration.getContractDetailsForContractId(
+                    request.contractId
+                );
             if (!contractDetails) {
-                throw new Error(`Could not find details for contract ID ${request.contractId}`);
+                throw new Error(
+                    `Could not find details for contract ID ${request.contractId}`
+                );
             }
             request.channel = contractDetails.channel;
             request.contractId = contractDetails.id;
         }
 
         if (!request.contractFunction) {
-            throw new Error('No contractFunction provided in the request');
+            throw new Error("No contractFunction provided in the request");
         }
 
         if (!request.contractArguments) {
             request.contractArguments = [];
         }
 
-        return await this._submitOrEvaluateTransaction(request, request.readOnly === undefined || !request.readOnly);
+        return await this._submitOrEvaluateTransaction(
+            request,
+            request.readOnly === undefined || !request.readOnly
+        );
     }
 
     /**
@@ -186,7 +234,6 @@ class V1FabricGateway extends ConnectorBase {
         this.context = undefined;
     }
 
-
     ////////////////////////////////
     // INTERNAL UTILITY FUNCTIONS //
     ////////////////////////////////
@@ -196,21 +243,33 @@ class V1FabricGateway extends ConnectorBase {
      * @async
      */
     async _prepareGatewayAndContractMapsForEachIdentity() {
-        logger.debug('Entering _prepareGatewayAndContractMapsForEachIdentity');
+        logger.debug("Entering _prepareGatewayAndContractMapsForEachIdentity");
 
         for (const organization of this.connectorConfiguration.getOrganizations()) {
-            const aliasNames = await this.connectorConfiguration.getAliasNamesForOrganization(organization);
-            const walletWithIdentities = this.connectorConfiguration.getWallet();
+            const aliasNames =
+                await this.connectorConfiguration.getAliasNamesForOrganization(
+                    organization
+                );
+            const walletWithIdentities =
+                this.connectorConfiguration.getWallet();
 
             for (const aliasName of aliasNames) {
-                const gateway = await this._createGatewayWithIdentity(organization, aliasName, walletWithIdentities);
+                const gateway = await this._createGatewayWithIdentity(
+                    organization,
+                    aliasName,
+                    walletWithIdentities
+                );
                 this.gatewayInstanceByIdentity.set(aliasName, gateway);
 
-                const contractMap = await this._createChannelAndChaincodeIdToContractMap(gateway, aliasName);
+                const contractMap =
+                    await this._createChannelAndChaincodeIdToContractMap(
+                        gateway,
+                        aliasName
+                    );
                 this.contractInstancesByIdentity.set(aliasName, contractMap);
             }
         }
-        logger.debug('Exiting _prepareGatewayAndContractMapsForEachIdentity');
+        logger.debug("Exiting _prepareGatewayAndContractMapsForEachIdentity");
     }
 
     /**
@@ -221,30 +280,39 @@ class V1FabricGateway extends ConnectorBase {
      * @async
      */
     async _createChannelAndChaincodeIdToContractMap(gateway, aliasName) {
-        logger.debug('Entering _createChannelAndChaincodeIdToContractMap');
+        logger.debug("Entering _createChannelAndChaincodeIdToContractMap");
         logger.info(`Generating contract map for user ${aliasName}`);
 
         const contractMap = new Map();
         const channels = this.connectorConfiguration.getAllChannelNames();
         for (const channel of channels) {
-
             let network;
             try {
                 network = await gateway.getNetwork(channel);
-            } catch(err) {
-                logger.warn(`Couldn't initialize ${channel} for ${aliasName}. ${aliasName} not available for use on this channel. Error: ${err.message}`);
+            } catch (err) {
+                logger.warn(
+                    `Couldn't initialize ${channel} for ${aliasName}. ${aliasName} not available for use on this channel. Error: ${err.message}`
+                );
                 continue;
             }
 
-            const contracts = this.connectorConfiguration.getContractDefinitionsForChannelName(channel);
+            const contracts =
+                this.connectorConfiguration.getContractDefinitionsForChannelName(
+                    channel
+                );
 
             for (const contract of contracts) {
-                const networkContract = await network.getContract(contract.id);
+                console.log("++++++++++++++++++++++++++++++++++++++");
+                console.log(contract.contractName);
+                console.log("++++++++++++++++++++++++++++++++++++++");
+                const networkContract = network.getContract(
+                    contract.id,
+                    contract.contractName
+                );
                 contractMap.set(`${channel}_${contract.id}`, networkContract);
             }
-
         }
-        logger.debug('Exiting _createChannelAndChaincodeIdToContractMap');
+        logger.debug("Exiting _createChannelAndChaincodeIdToContractMap");
 
         return contractMap;
     }
@@ -258,24 +326,30 @@ class V1FabricGateway extends ConnectorBase {
      * @async
      */
     async _createGatewayWithIdentity(mspId, aliasName, wallet) {
-        logger.debug(`Entering _createGatewayWithIdentity for alias name ${aliasName}`);
+        logger.debug(
+            `Entering _createGatewayWithIdentity for alias name ${aliasName}`
+        );
 
-        const connectionProfileDefinition = await this.connectorConfiguration.getConnectionProfileDefinitionForOrganization(mspId);
+        const connectionProfileDefinition =
+            await this.connectorConfiguration.getConnectionProfileDefinitionForOrganization(
+                mspId
+            );
         const opts = {
             identity: aliasName,
             wallet,
             discovery: {
                 asLocalhost: this.configLocalHost,
-                enabled: connectionProfileDefinition.isDynamicConnectionProfile()
+                enabled:
+                    connectionProfileDefinition.isDynamicConnectionProfile(),
             },
             eventHandlerOptions: {
                 commitTimeout: this.configDefaultTimeout,
-                strategy: EventStrategies[this.configEventStrategy]
+                strategy: EventStrategies[this.configEventStrategy],
             },
             queryHandlerOptions: {
                 requestTimeout: this.configDefaultTimeout,
-                strategy: QueryStrategies[this.configQueryStrategy]
-            }
+                strategy: QueryStrategies[this.configQueryStrategy],
+            },
         };
 
         if (this.connectorConfiguration.isMutualTLS()) {
@@ -285,15 +359,24 @@ class V1FabricGateway extends ConnectorBase {
         const gateway = new Gateway();
 
         try {
-            logger.info(`Connecting user with identity ${aliasName} to a Network Gateway`);
-            await gateway.connect(connectionProfileDefinition.getConnectionProfile(), opts);
-            logger.info(`Successfully connected user with identity ${aliasName} to a Network Gateway`);
+            logger.info(
+                `Connecting user with identity ${aliasName} to a Network Gateway`
+            );
+            await gateway.connect(
+                connectionProfileDefinition.getConnectionProfile(),
+                opts
+            );
+            logger.info(
+                `Successfully connected user with identity ${aliasName} to a Network Gateway`
+            );
         } catch (err) {
-            logger.error(`Connecting user with identity ${aliasName} to a Network Gateway failed with error: ${err}`);
+            logger.error(
+                `Connecting user with identity ${aliasName} to a Network Gateway failed with error: ${err}`
+            );
             throw err;
         }
 
-        logger.debug('Exiting _createGatewayWithIdentity');
+        logger.debug("Exiting _createGatewayWithIdentity");
 
         return gateway;
     }
@@ -301,21 +384,25 @@ class V1FabricGateway extends ConnectorBase {
     /**
      */
     async _buildPeerCache() {
-        logger.debug('Entering _buildPeerCache');
+        logger.debug("Entering _buildPeerCache");
         for (const aliasName of this.gatewayInstanceByIdentity.keys()) {
             const gateway = this.gatewayInstanceByIdentity.get(aliasName);
-            const channelNames = this.connectorConfiguration.getAllChannelNames();
+            const channelNames =
+                this.connectorConfiguration.getAllChannelNames();
 
             for (const channelName of channelNames) {
                 const network = await gateway.getNetwork(channelName);
                 const channel = network.getChannel();
 
                 for (const peerObject of channel.getChannelPeers()) {
-                    this.peerNameToPeerObjectCache.set(peerObject.getName(), peerObject);
+                    this.peerNameToPeerObjectCache.set(
+                        peerObject.getName(),
+                        peerObject
+                    );
                 }
             }
         }
-        logger.debug('Exiting _buildPeerCache');
+        logger.debug("Exiting _buildPeerCache");
     }
 
     /**
@@ -326,8 +413,16 @@ class V1FabricGateway extends ConnectorBase {
      * @async
      */
     async _submitOrEvaluateTransaction(invokeSettings, isSubmit) {
-        const smartContract = await this._getContractForIdentityOnChannelWithChaincodeID(invokeSettings.invokerMspId, invokeSettings.invokerIdentity, invokeSettings.channel, invokeSettings.contractId);
-        const transaction = smartContract.createTransaction(invokeSettings.contractFunction);
+        const smartContract =
+            await this._getContractForIdentityOnChannelWithChaincodeID(
+                invokeSettings.invokerMspId,
+                invokeSettings.invokerIdentity,
+                invokeSettings.channel,
+                invokeSettings.contractId
+            );
+        const transaction = smartContract.createTransaction(
+            invokeSettings.contractFunction
+        );
 
         // Build the Caliper TxStatus
         const invokeStatus = new TxStatus(transaction.getTransactionID());
@@ -338,13 +433,18 @@ class V1FabricGateway extends ConnectorBase {
             const transientData = {};
             const keys = Array.from(Object.keys(invokeSettings.transientMap));
             keys.forEach((key) => {
-                transientData[key] = Buffer.from(invokeSettings.transientMap[key]);
+                transientData[key] = Buffer.from(
+                    invokeSettings.transientMap[key]
+                );
             });
             transaction.setTransient(transientData);
         }
 
         if (invokeSettings.targetPeers && isSubmit) {
-            if (Array.isArray(invokeSettings.targetPeers) && invokeSettings.targetPeers.length > 0) {
+            if (
+                Array.isArray(invokeSettings.targetPeers) &&
+                invokeSettings.targetPeers.length > 0
+            ) {
                 const targetPeerObjects = [];
                 for (const name of invokeSettings.targetPeers) {
                     const peer = this.peerNameToPeerObjectCache.get(name);
@@ -356,13 +456,22 @@ class V1FabricGateway extends ConnectorBase {
                     transaction.setEndorsingPeers(targetPeerObjects);
                 }
             } else {
-                logger.warn(`${invokeSettings.targetPeers} is not a populated array, no peers targeted`);
+                logger.warn(
+                    `${invokeSettings.targetPeers} is not a populated array, no peers targeted`
+                );
             }
         } else if (invokeSettings.targetOrganizations && isSubmit) {
-            if (Array.isArray(invokeSettings.targetOrganizations) && invokeSettings.targetOrganizations.length > 0) {
-                transaction.setEndorsingOrganizations(...invokeSettings.targetOrganizations);
+            if (
+                Array.isArray(invokeSettings.targetOrganizations) &&
+                invokeSettings.targetOrganizations.length > 0
+            ) {
+                transaction.setEndorsingOrganizations(
+                    ...invokeSettings.targetOrganizations
+                );
             } else {
-                logger.warn(`${invokeSettings.targetOrganizations} is not a populated array, no orgs targeted`);
+                logger.warn(
+                    `${invokeSettings.targetOrganizations} is not a populated array, no orgs targeted`
+                );
             }
         }
 
@@ -370,18 +479,26 @@ class V1FabricGateway extends ConnectorBase {
             let result;
 
             if (isSubmit) {
-                invokeStatus.Set('request_type', 'transaction');
+                invokeStatus.Set("request_type", "transaction");
                 invokeStatus.SetTimeCreate(Date.now());
-                result = await transaction.submit(...invokeSettings.contractArguments);
+                result = await transaction.submit(
+                    ...invokeSettings.contractArguments
+                );
             } else {
-
-                if (invokeSettings.targetPeers || invokeSettings.targetOrganizations) {
-                    logger.warn('targetPeers or targetOrganizations options are not valid for query requests');
+                if (
+                    invokeSettings.targetPeers ||
+                    invokeSettings.targetOrganizations
+                ) {
+                    logger.warn(
+                        "targetPeers or targetOrganizations options are not valid for query requests"
+                    );
                 }
 
-                invokeStatus.Set('request_type', 'query');
+                invokeStatus.Set("request_type", "query");
                 invokeStatus.SetTimeCreate(Date.now());
-                result = await transaction.evaluate(...invokeSettings.contractArguments);
+                result = await transaction.evaluate(
+                    ...invokeSettings.contractArguments
+                );
             }
 
             invokeStatus.SetResult(result);
@@ -390,10 +507,18 @@ class V1FabricGateway extends ConnectorBase {
 
             return invokeStatus;
         } catch (err) {
-            logger.error(`Failed to perform ${isSubmit ? 'submit' : 'query' } transaction [${invokeSettings.contractFunction}] using arguments [${invokeSettings.contractArguments}],  with error: ${err.stack ? err.stack : err}`);
+            logger.error(
+                `Failed to perform ${
+                    isSubmit ? "submit" : "query"
+                } transaction [${
+                    invokeSettings.contractFunction
+                }] using arguments [${
+                    invokeSettings.contractArguments
+                }],  with error: ${err.stack ? err.stack : err}`
+            );
             invokeStatus.SetStatusFail();
             invokeStatus.SetVerification(true);
-            invokeStatus.SetResult('');
+            invokeStatus.SetResult("");
 
             return invokeStatus;
         }
@@ -408,25 +533,42 @@ class V1FabricGateway extends ConnectorBase {
      * @returns {Promise<FabricNetworkAPI.Contract>} A contract that may be used to submit or evaluate transactions
      * @async
      */
-    async _getContractForIdentityOnChannelWithChaincodeID(mspId, identityName, channelName, contractId) {
-        logger.debug('Entering _getContractForIdentityOnChannelWithChaincodeID');
+    async _getContractForIdentityOnChannelWithChaincodeID(
+        mspId,
+        identityName,
+        channelName,
+        contractId
+    ) {
+        logger.debug(
+            "Entering _getContractForIdentityOnChannelWithChaincodeID"
+        );
 
-        const aliasName = this.connectorConfiguration.getAliasNameForOrganizationAndIdentityName(mspId, identityName);
+        const aliasName =
+            this.connectorConfiguration.getAliasNameForOrganizationAndIdentityName(
+                mspId,
+                identityName
+            );
         const contractSet = this.contractInstancesByIdentity.get(aliasName);
 
         // If no contract set found, there is a user configuration/test specification error, so it should terminate
         if (!contractSet) {
-            throw Error(`No contracts for invokerIdentity ${identityName}${mspId ? ` in ${mspId}` : ''} found. Identity and/or MspId does not exist`);
+            throw Error(
+                `No contracts for invokerIdentity ${identityName}${
+                    mspId ? ` in ${mspId}` : ""
+                } found. Identity and/or MspId does not exist`
+            );
         }
 
         const contract = contractSet.get(`${channelName}_${contractId}`);
 
         // If no contract found, there is a user configuration/test specification error, so it should terminate
         if (!contract) {
-            throw Error(`Unable to find specified contract ${contractId} on channel ${channelName}!`);
+            throw Error(
+                `Unable to find specified contract ${contractId} on channel ${channelName}!`
+            );
         }
 
-        logger.debug('Exiting _getContractForIdentityOnChannelWithChaincodeID');
+        logger.debug("Exiting _getContractForIdentityOnChannelWithChaincodeID");
 
         return contract;
     }
