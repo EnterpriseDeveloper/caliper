@@ -282,19 +282,30 @@ class PeerGateway extends ConnectorBase {
                 );
 
             for (const contract of contracts) {
-                console.log("++++++++++++++++++++++++++++++++++++++");
-                console.log(contract.contractName);
-                console.log("++++++++++++++++++++++++++++++++++++++");
-                const networkContract = network.getContract(
-                    contract.id,
-                    contract.contractName
+                const { id, contractName } = this._detectContractName(
+                    contract.id
                 );
+                const networkContract = network.getContract(id, contractName);
                 contractMap.set(`${channel}_${contract.id}`, networkContract);
             }
         }
         logger.debug("Exiting _createChannelAndChaincodeIdToContractMap");
 
         return contractMap;
+    }
+
+    /**
+     * Check if contract name is exist, example is ledger:contractName
+     * @param {string} name The msp id of the organisation which owns the identity
+     * @returns {string} returns contractName and id
+     */
+    _detectContractName(name) {
+        if (name.includes(":")) {
+            const info = name.split(":");
+            return { id: info[0], contractName: info[1] };
+        } else {
+            return { id: name, contractName: undefined };
+        }
     }
 
     /**
